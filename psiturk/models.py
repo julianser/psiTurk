@@ -45,11 +45,7 @@ class Participant(Base):
         self.beginhit = datetime.datetime.now()
     
     def __repr__(self):
-        return "Subject(%s, %s, %s, %s)" % ( 
-            self.uniqueid, 
-            self.cond, 
-            self.status,
-            self.codeversion)
+        return f"Subject({self.uniqueid}, {self.cond}, {self.status}, {self.codeversion})"
     
     def get_trial_data(self):
         try:

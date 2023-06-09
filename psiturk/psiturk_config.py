@@ -9,7 +9,7 @@ class PsiturkConfig(SafeConfigParser):
         if 'OPENSHIFT_SECRET_TOKEN' in os.environ:
             globalConfig = os.environ['OPENSHIFT_DATA_DIR'] + globalConfigName
         else:
-            globalConfig = "~/" + globalConfigName
+            globalConfig = f"~/{globalConfigName}"
 
         self.parent = SafeConfigParser
         self.parent.__init__(self, **kwargs)
@@ -60,8 +60,5 @@ class PsiturkConfig(SafeConfigParser):
         else:
             self.localParser.set(section, field, str(value), *args, **kwargs)
         self.write(changeGlobal)
-        if section in ["Server Parameters","Task Parameters","Database Parameters"]:
-            return True
-        else:
-            return False
+        return section in ["Server Parameters","Task Parameters","Database Parameters"]
 

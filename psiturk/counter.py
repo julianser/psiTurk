@@ -106,7 +106,7 @@ class Counter(dict):
 
     def __repr__(self):
         if not self:
-            return '%s()' % self.__class__.__name__
+            return f'{self.__class__.__name__}()'
         items = ', '.join(map('%r: %r'.__mod__, self.most_common()))
         return '%s({%s})' % (self.__class__.__name__, items)
 

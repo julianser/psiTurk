@@ -152,11 +152,16 @@ class PsiturkShell(Cmd, object):
 
     def get_intro_prompt(self):
         ''' Print cabin mode message '''
-        sys_status = open(self.help_path + 'cabin.txt', 'r')
+        sys_status = open(f'{self.help_path}cabin.txt', 'r')
         server_msg = sys_status.read()
-        return server_msg + colorize('psiTurk version ' + version_number +
-                                     '\nType "help" for more information.',
-                                     'green', False)
+        return server_msg + colorize(
+            (
+                f'psiTurk version {version_number}'
+                + '\nType "help" for more information.'
+            ),
+            'green',
+            False,
+        )
 
     def do_psiturk_status(self, _):
         ''' Print psiTurk news '''
@@ -175,7 +180,7 @@ class PsiturkShell(Cmd, object):
             server_string = colorize('unknown', 'yellow')
         elif server_status == 'blocked':
             server_string = colorize('blocked', 'red')
-        prompt += ' server:' + server_string
+        prompt += f' server:{server_string}'
         prompt += ' mode:' + colorize('cabin', 'bold')
         prompt += ']$ '
         self.prompt = prompt
@@ -196,9 +201,7 @@ class PsiturkShell(Cmd, object):
 
     def onecmd_plus_hooks(self, line):
         ''' Trigger hooks after command. '''
-        if not line:
-            return self.emptyline()
-        return Cmd.onecmd_plus_hooks(self, line)
+        return self.emptyline() if not line else Cmd.onecmd_plus_hooks(self, line)
 
     def postcmd(self, stop, line):
         ''' Exit cmd cleanly. '''
@@ -213,7 +216,7 @@ class PsiturkShell(Cmd, object):
     def complete(self, text, state):
         ''' Add space after a completion, makes tab completion with
         multi-word commands cleaner. '''
-        return Cmd.complete(self, text, state) + ' '
+        return f'{Cmd.complete(self, text, state)} '
 
 
     # +-+.+-+.+-+.+-+.+-+.+-+.+-+.+-+.+-+.+-+.+-+.+-+.+-+.+-+.+-+.
@@ -302,8 +305,7 @@ class PsiturkShell(Cmd, object):
     def do_reload_config(self, _):
         ''' Reload config. '''
         restart_server = False
-        if (self.server.is_server_running() == 'yes' or
-                self.server.is_server_running() == 'maybe'):
+        if self.server.is_server_running() in ['yes', 'maybe']:
             user_input = raw_input("Reloading configuration requires the server\
                                    to restart. Really reload? y or n: ")
             if user_input != 'y':
@@ -359,14 +361,13 @@ class PsiturkShell(Cmd, object):
     def do_download_datafiles(self, _):
         ''' Download datafiles. '''
         contents = {"trialdata": lambda p: p.get_trial_data(), "eventdata": \
-                    lambda p: p.get_event_data(), "questiondata": lambda p: \
-                    p.get_question_data()}
+                        lambda p: p.get_event_data(), "questiondata": lambda p: \
+                        p.get_question_data()}
         query = Participant.query.all()
         for k in contents:
             ret = "".join([contents[k](p) for p in query])
-            temp_file = open(k + '.csv', 'w')
-            temp_file.write(ret)
-            temp_file.close()
+            with open(f'{k}.csv', 'w') as temp_file:
+                temp_file.write(ret)
 
     @docopt_cmd
     def do_open(self, arg):
@@ -394,8 +395,7 @@ class PsiturkShell(Cmd, object):
 
     def do_quit(self, _):
         ''' Execute on quit '''
-        if (self.server.is_server_running() == 'yes' or
-                self.server.is_server_running() == 'maybe'):
+        if self.server.is_server_running() in ['yes', 'maybe']:
             user_input = raw_input("Quitting shell will shut down experiment \
                 server.  Really quit? y or n: ")
             if user_input == 'y':
@@ -439,18 +439,17 @@ class PsiturkShell(Cmd, object):
     def random_id_generator(self, size=6, chars=string.ascii_uppercase +
                             string.digits):
         ''' Generate random id numbers '''
-        return ''.join(random.choice(chars) for x in range(size))
+        return ''.join(random.choice(chars) for _ in range(size))
 
     def do_help(self, arg):
         ''' Modified version of standard cmd help which lists psiturk commands
             first'''
         if arg:
             try:
-                func = getattr(self, 'help_' + arg)
+                func = getattr(self, f'help_{arg}')
             except AttributeError:
                 try:
-                    doc = getattr(self, 'do_' + arg).__doc__
-                    if doc:
+                    if doc := getattr(self, f'do_{arg}').__doc__:
                         self.stdout.write("%s\n" % str(doc))
                         return
                 except AttributeError:
@@ -463,12 +462,9 @@ class PsiturkShell(Cmd, object):
             names = dir(PsiturkShell)
             super_names = dir(Cmd)
             new_names = [m for m in names if m not in super_names]
-            help_struct = {}
             cmds_psiturk = []
             cmds_super = []
-            for name in names:
-                if name[:5] == 'help_':
-                    help_struct[name[5:]] = 1
+            help_struct = {name[5:]: 1 for name in names if name[:5] == 'help_'}
             names.sort()
             prevname = ''
             for name in names:
@@ -515,15 +511,13 @@ class PsiturkNetworkShell(PsiturkShell):
 
     def do_quit(self, arg):
         '''Override do_quit for network clean up.'''
-        if (self.server.is_server_running() == 'yes' or
-                self.server.is_server_running() == 'maybe'):
+        if self.server.is_server_running() in ['yes', 'maybe']:
             user_input = raw_input("Quitting shell will shut down experiment \
                 server. Really quit? y or n: ")
-            if user_input == 'y':
-                self.server_off()
-                self.clean_up()
-            else:
+            if user_input != 'y':
                 return
+            self.server_off()
+            self.clean_up()
         return True
 
     def server_off(self):
@@ -561,9 +555,14 @@ class PsiturkNetworkShell(PsiturkShell):
         ''' Overloads intro prompt with network-aware version if you can reach
         psiTurk.org, request system status message'''
         server_msg = self.web_services.get_system_status()
-        return server_msg + colorize('psiTurk version ' + version_number +
-                                     '\nType "help" for more information.',
-                                     'green', False)
+        return server_msg + colorize(
+            (
+                f'psiTurk version {version_number}'
+                + '\nType "help" for more information.'
+            ),
+            'green',
+            False,
+        )
 
     def color_prompt(self):  # overloads prompt with network info
         prompt = '[' + colorize('psiTurk', 'bold')
@@ -577,7 +576,7 @@ class PsiturkNetworkShell(PsiturkShell):
             server_string = colorize('status unknown', 'yellow')
         elif server_status == 'blocked':
             server_string = colorize('blocked', 'red')
-        prompt += ' server:' + server_string
+        prompt += f' server:{server_string}'
         if self.sandbox:
             prompt += ' mode:' + colorize('sdbx', 'bold')
         else:
@@ -585,9 +584,9 @@ class PsiturkNetworkShell(PsiturkShell):
         if self.tunnel.is_open:
             prompt += ' tunnel:' + colorize('✓', 'green')
         if self.sandbox:
-            prompt += ' #HITs:' + str(self.sandbox_hits)
+            prompt += f' #HITs:{str(self.sandbox_hits)}'
         else:
-            prompt += ' #HITs:' + str(self.live_hits)
+            prompt += f' #HITs:{str(self.live_hits)}'
         prompt += ']$ '
         self.prompt = prompt
 
@@ -813,10 +812,7 @@ class PsiturkNetworkShell(PsiturkShell):
 
     def tally_hits(self):
         ''' Tally hits '''
-        hits = self.amt_services.get_active_hits()
-        num_hits = 0
-        if hits:
-            num_hits = len(hits)
+        num_hits = len(hits) if (hits := self.amt_services.get_active_hits()) else 0
         if self.sandbox:
             self.sandbox_hits = num_hits
         else:
@@ -1674,11 +1670,10 @@ class PsiturkNetworkShell(PsiturkShell):
     def do_help(self, arg):
         if arg:
             try:
-                func = getattr(self, 'help_' + arg)
+                func = getattr(self, f'help_{arg}')
             except AttributeError:
                 try:
-                    doc = getattr(self, 'do_' + arg).__doc__
-                    if doc:
+                    if doc := getattr(self, f'do_{arg}').__doc__:
                         self.stdout.write("%s\n" % str(doc))
                         return
                 except AttributeError:
@@ -1691,12 +1686,9 @@ class PsiturkNetworkShell(PsiturkShell):
             names = dir(PsiturkNetworkShell)
             super_names = dir(Cmd)
             new_names = [m for m in names if m not in super_names]
-            help_struct = {}
             cmds_psiTurk = []
             cmds_super = []
-            for name in names:
-                if name[:5] == 'help_':
-                    help_struct[name[5:]]=1
+            help_struct = {name[5:]: 1 for name in names if name[:5] == 'help_'}
             names.sort()
             prevname = ''
             for name in names:

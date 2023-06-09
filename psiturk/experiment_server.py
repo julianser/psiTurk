@@ -36,11 +36,11 @@ class ExperimentServer(Application):
         Takes our custom options from self.options and creates a config
         dict which specifies custom settings.
         '''
-        cfg = {}
-        for k, v in self.options.items():
-            if k.lower() in self.cfg.settings and v is not None:
-                cfg[k.lower()] = v
-        return cfg
+        return {
+            k.lower(): v
+            for k, v in self.options.items()
+            if k.lower() in self.cfg.settings and v is not None
+        }
 
     def load(self):
         '''load method

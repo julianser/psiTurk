@@ -177,8 +177,7 @@ class RDSServices(object):
         except:
             return False
         else:
-            myinstance = instances[0]
-            return myinstance
+            return instances[0]
 
     def allow_access_to_instance(self, _, ip_address):
         ''' Allow access to instance. '''
@@ -328,20 +327,25 @@ class MTurkServices(object):
             hits = self.mtc.get_all_hits()
         except MTurkRequestError:
             return False
-        reviewable_hits = [hit for hit in hits if hit.HITStatus == "Reviewable" \
-                           or hit.HITStatus == "Reviewing"]
-        hits_data = [MTurkHIT({
-            'hitid': hit.HITId,
-            'title': hit.Title,
-            'status': hit.HITStatus,
-            'max_assignments': hit.MaxAssignments,
-            'number_assignments_completed': hit.NumberOfAssignmentsCompleted,
-            'number_assignments_pending': hit.NumberOfAssignmentsPending,
-            'number_assignments_available': hit.NumberOfAssignmentsAvailable,
-            'creation_time': hit.CreationTime,
-            'expiration': hit.Expiration
-        }) for hit in reviewable_hits]
-        return hits_data
+        reviewable_hits = [
+            hit for hit in hits if hit.HITStatus in ["Reviewable", "Reviewing"]
+        ]
+        return [
+            MTurkHIT(
+                {
+                    'hitid': hit.HITId,
+                    'title': hit.Title,
+                    'status': hit.HITStatus,
+                    'max_assignments': hit.MaxAssignments,
+                    'number_assignments_completed': hit.NumberOfAssignmentsCompleted,
+                    'number_assignments_pending': hit.NumberOfAssignmentsPending,
+                    'number_assignments_available': hit.NumberOfAssignmentsAvailable,
+                    'creation_time': hit.CreationTime,
+                    'expiration': hit.Expiration,
+                }
+            )
+            for hit in reviewable_hits
+        ]
 
     def get_all_hits(self):
         ''' Get all HITs '''
@@ -351,18 +355,22 @@ class MTurkServices(object):
             hits = self.mtc.get_all_hits()
         except MTurkRequestError:
             return False
-        hits_data = [MTurkHIT({
-            'hitid': hit.HITId,
-            'title': hit.Title,
-            'status': hit.HITStatus,
-            'max_assignments': hit.MaxAssignments,
-            'number_assignments_completed': hit.NumberOfAssignmentsCompleted,
-            'number_assignments_pending': hit.NumberOfAssignmentsPending,
-            'number_assignments_available': hit.NumberOfAssignmentsAvailable,
-            'creation_time': hit.CreationTime,
-            'expiration': hit.Expiration,
-            }) for hit in hits]
-        return hits_data
+        return [
+            MTurkHIT(
+                {
+                    'hitid': hit.HITId,
+                    'title': hit.Title,
+                    'status': hit.HITStatus,
+                    'max_assignments': hit.MaxAssignments,
+                    'number_assignments_completed': hit.NumberOfAssignmentsCompleted,
+                    'number_assignments_pending': hit.NumberOfAssignmentsPending,
+                    'number_assignments_available': hit.NumberOfAssignmentsAvailable,
+                    'creation_time': hit.CreationTime,
+                    'expiration': hit.Expiration,
+                }
+            )
+            for hit in hits
+        ]
 
     def get_active_hits(self):
         ''' Get active HITs '''
@@ -374,18 +382,22 @@ class MTurkServices(object):
         except MTurkRequestError:
             return False
         active_hits = [hit for hit in hits if not hit.expired]
-        hits_data = [MTurkHIT({
-            'hitid': hit.HITId,
-            'title': hit.Title,
-            'status': hit.HITStatus,
-            'max_assignments': hit.MaxAssignments,
-            'number_assignments_completed': hit.NumberOfAssignmentsCompleted,
-            'number_assignments_pending': hit.NumberOfAssignmentsPending,
-            'number_assignments_available': hit.NumberOfAssignmentsAvailable,
-            'creation_time': hit.CreationTime,
-            'expiration': hit.Expiration,
-            }) for hit in active_hits]
-        return hits_data
+        return [
+            MTurkHIT(
+                {
+                    'hitid': hit.HITId,
+                    'title': hit.Title,
+                    'status': hit.HITStatus,
+                    'max_assignments': hit.MaxAssignments,
+                    'number_assignments_completed': hit.NumberOfAssignmentsCompleted,
+                    'number_assignments_pending': hit.NumberOfAssignmentsPending,
+                    'number_assignments_available': hit.NumberOfAssignmentsAvailable,
+                    'creation_time': hit.CreationTime,
+                    'expiration': hit.Expiration,
+                }
+            )
+            for hit in active_hits
+        ]
 
     def get_workers(self, assignment_status=None):
         ''' Get workers '''
@@ -406,15 +418,17 @@ class MTurkServices(object):
             workers = [val for subl in workers_nested for val in subl]  # Flatten nested lists
         except MTurkRequestError:
             return False
-        worker_data = [{
-            'hitId': worker.HITId,
-            'assignmentId': worker.AssignmentId,
-            'workerId': worker.WorkerId,
-            'submit_time': worker.SubmitTime,
-            'accept_time': worker.AcceptTime,
-            'status': worker.AssignmentStatus
-        } for worker in workers]
-        return worker_data
+        return [
+            {
+                'hitId': worker.HITId,
+                'assignmentId': worker.AssignmentId,
+                'workerId': worker.WorkerId,
+                'submit_time': worker.SubmitTime,
+                'accept_time': worker.AcceptTime,
+                'status': worker.AssignmentStatus,
+            }
+            for worker in workers
+        ]
 
     def bonus_worker(self, assignment_id, amount, reason=""):
         ''' Bonus worker '''
@@ -533,9 +547,7 @@ class MTurkServices(object):
 
     def check_balance(self):
         ''' Check balance '''
-        if not self.connect_to_turk():
-            return '-'
-        return self.mtc.get_account_balance()[0]
+        return '-' if not self.connect_to_turk() else self.mtc.get_account_balance()[0]
 
     # TODO (if valid AWS credentials haven't been provided then
     # connect_to_turk() will fail, not error checking here and elsewhere)

@@ -93,62 +93,74 @@ class PsiTurkStandardTests(PsiturkUnitTest):
 
     def test_ad_with_all_urls(self):
         '''Test that ad page throws Error #1003 with no url vars.'''
-        args = '&'.join([
-            'assignmentId=debug%s' % self.assignment_id,
-            'workerId=debug%s' % self.worker_id,
-            'hitId=debug%s' % self.hit_id,
-            'mode=sandbox'])
-        rv = self.app.get('/ad?%s' % args)
+        args = '&'.join(
+            [
+                f'assignmentId=debug{self.assignment_id}',
+                f'workerId=debug{self.worker_id}',
+                f'hitId=debug{self.hit_id}',
+                'mode=sandbox',
+            ]
+        )
+        rv = self.app.get(f'/ad?{args}')
         assert 'Thank you for accepting this HIT!' in rv.data
 
     def test_exp_with_all_url_vars_not_registered_on_ad_server(self):
         '''Test that exp page throws Error #1018 with all url vars but not registered.'''
-        args = '&'.join([
-            'assignmentId=debug%s' % self.assignment_id,
-            'workerId=debug%s' % self.worker_id,
-            'hitId=debug%s' % self.hit_id,
-            'mode=sandbox'])
-        rv = self.app.get('/exp?%s' % args)
+        args = '&'.join(
+            [
+                f'assignmentId=debug{self.assignment_id}',
+                f'workerId=debug{self.worker_id}',
+                f'hitId=debug{self.hit_id}',
+                'mode=sandbox',
+            ]
+        )
+        rv = self.app.get(f'/exp?{args}')
         assert 'Error: #1018' in rv.data
 
     def test_sync_put(self):
-        request = "&".join([
-           "assignmentId=debug%s" % self.assignment_id,
-           "workerId=debug%s" % self.worker_id,
-           "hitId=debug%s" % self.hit_id,
-           "mode=debug"])
+        request = "&".join(
+            [
+                f"assignmentId=debug{self.assignment_id}",
+                f"workerId=debug{self.worker_id}",
+                f"hitId=debug{self.hit_id}",
+                "mode=debug",
+            ]
+        )
 
         # put the user in the database
-        rv = self.app.get("/exp?%s" % request)
+        rv = self.app.get(f"/exp?{request}")
 
         # try putting the sync
-        uniqueid = "debug%s:debug%s" % (self.worker_id, self.assignment_id)
-        rv = self.app.put('/sync/%s' % uniqueid)
+        uniqueid = f"debug{self.worker_id}:debug{self.assignment_id}"
+        rv = self.app.put(f'/sync/{uniqueid}')
         status = json.loads(rv.data).get("status", "")
         assert status == "user data saved"
 
     def test_sync_get(self):
-        request = "&".join([
-           "assignmentId=debug%s" % self.assignment_id,
-           "workerId=debug%s" % self.worker_id,
-           "hitId=debug%s" % self.hit_id,
-           "mode=debug"])
+        request = "&".join(
+            [
+                f"assignmentId=debug{self.assignment_id}",
+                f"workerId=debug{self.worker_id}",
+                f"hitId=debug{self.hit_id}",
+                "mode=debug",
+            ]
+        )
 
         # put the user in the database
-        rv = self.app.get("/exp?%s" % request)
+        rv = self.app.get(f"/exp?{request}")
 
         # save data with sync PUT
-        uniqueid = "debug%s:debug%s" % (self.worker_id, self.assignment_id)
-        rv = self.app.put('/sync/%s' % uniqueid)
+        uniqueid = f"debug{self.worker_id}:debug{self.assignment_id}"
+        rv = self.app.put(f'/sync/{uniqueid}')
 
         # get data with sync GET
-        uniqueid = "debug%s:debug%s" % (self.worker_id, self.assignment_id)
-        rv = self.app.get('/sync/%s' % uniqueid)
+        uniqueid = f"debug{self.worker_id}:debug{self.assignment_id}"
+        rv = self.app.get(f'/sync/{uniqueid}')
 
         response = json.loads(rv.data)
-        assert response.get("assignmentId", "") == "debug%s" % self.assignment_id
-        assert response.get("workerId", "") == "debug%s" % self.worker_id
-        assert response.get("hitId", "") == "debug%s" % self.hit_id
+        assert response.get("assignmentId", "") == f"debug{self.assignment_id}"
+        assert response.get("workerId", "") == f"debug{self.worker_id}"
+        assert response.get("hitId", "") == f"debug{self.hit_id}"
         assert response.get("condition", None) == 0
         assert response.get("counterbalance", None) == 0
         assert response.get("bonus", None) == 0.0
@@ -198,7 +210,7 @@ class PsiTurkTestPsiturkJS(PsiturkUnitTest):
         '''Build up fixtures'''
         self.PSITURK_JS_FILE = '../psiturk/psiturk_js/psiturk.js'
         os.chdir('psiturk-example')
-        os.rename(self.PSITURK_JS_FILE, self.PSITURK_JS_FILE + '.bup')
+        os.rename(self.PSITURK_JS_FILE, f'{self.PSITURK_JS_FILE}.bup')
         import psiturk.db
         import psiturk.experiment
         reload(psiturk.experiment)
@@ -220,7 +232,7 @@ class PsiTurkTestPsiturkJS(PsiturkUnitTest):
         '''Tear down fixtures'''
         super(PsiTurkTestPsiturkJS, self).tearDown()
         os.chdir('psiturk-example')
-        os.rename(self.PSITURK_JS_FILE + '.bup', self.PSITURK_JS_FILE)
+        os.rename(f'{self.PSITURK_JS_FILE}.bup', self.PSITURK_JS_FILE)
 
 
 if __name__ == '__main__':

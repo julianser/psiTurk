@@ -9,12 +9,9 @@ except IOError:
 
 
 if __name__ == "__main__":
-    # remove file if it exists and re-write with current version number
-    fp = open('psiturk/version.py',"w+")
-    fp.write("version_number = '%s'\n" % version_number)
-    fp.flush()
-    fp.close()
-
+    with open('psiturk/version.py',"w+") as fp:
+        fp.write("version_number = '%s'\n" % version_number)
+        fp.flush()
     setup(
         name = "PsiTurk",
         version = version_number,

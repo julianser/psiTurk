@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """ This module provides the backend Flask server used by psiTurk. """
 
+
 import os
 import sys
 import datetime
@@ -73,7 +74,6 @@ except ImportError as e:
     if str(e) == 'No module named custom':
         app.logger.info("Hmm... it seems no custom code (custom.py) associated \
                     with this project.")
-        pass
     else:
         app.logger.error("There is custom code (custom.py) associated with this \
                     project but it doesn't import cleanly. Raising exception,")
@@ -181,7 +181,6 @@ def check_worker_status():
     ''' Check worker status route '''
     if 'workerId' not in request.args:
         resp = {"status": "bad request"}
-        return jsonify(**resp)
     else:
         worker_id = request.args['workerId']
         try:
@@ -191,7 +190,8 @@ def check_worker_status():
         except exc.SQLAlchemyError:
             status = NOT_ACCEPTED
         resp = {"status" : status}
-        return jsonify(**resp)
+
+    return jsonify(**resp)
 
 @app.route('/ad', methods=['GET'])
 @nocache
@@ -227,15 +227,12 @@ def advertisement():
         # Handler for IE users if IE is not supported.
         raise ExperimentError('browser_type_not_allowed')
 
-    if not ('hitId' in request.args and 'assignmentId' in request.args):
+    if 'hitId' not in request.args or 'assignmentId' not in request.args:
         raise ExperimentError('hit_assign_worker_id_not_set_in_mturk')
     hit_id = request.args['hitId']
     assignment_id = request.args['assignmentId']
     mode = request.args['mode']
-    if hit_id[:5] == "debug":
-        debug_mode = True
-    else:
-        debug_mode = False
+    debug_mode = hit_id[:5] == "debug"
     already_in_db = False
     if 'workerId' in request.args:
         worker_id = request.args['workerId']
@@ -297,8 +294,11 @@ def give_consent():
     """
     Serves up the consent in the popup window.
     """
-    if not ('hitId' in request.args and 'assignmentId' in request.args and
-            'workerId' in request.args):
+    if (
+        'hitId' not in request.args
+        or 'assignmentId' not in request.args
+        or 'workerId' not in request.args
+    ):
         raise ExperimentError('hit_assign_worker_id_not_set_in_consent')
     hit_id = request.args['hitId']
     assignment_id = request.args['assignmentId']
@@ -319,22 +319,24 @@ def get_ad_via_hitid(hit_id):
     username = CONFIG.get('psiTurk Access', 'psiturk_access_key_id')
     password = CONFIG.get('psiTurk Access', 'psiturk_secret_access_id')
     try:
-        req = requests.get('https://api.psiturk.org/api/ad/lookup/' + hit_id,
-                           auth=(username, password))
+        req = requests.get(
+            f'https://api.psiturk.org/api/ad/lookup/{hit_id}',
+            auth=(username, password),
+        )
     except:
         raise ExperimentError('api_server_not_reachable')
     else:
-        if req.status_code == 200:
-            return req.json()['ad_id']
-        else:
-            return "error"
+        return req.json()['ad_id'] if req.status_code == 200 else "error"
 
 @app.route('/exp', methods=['GET'])
 @nocache
 def start_exp():
     """ Serves up the experiment applet. """
-    if not ('hitId' in request.args and 'assignmentId' in request.args and
-            'workerId' in request.args):
+    if (
+        'hitId' not in request.args
+        or 'assignmentId' not in request.args
+        or 'workerId' not in request.args
+    ):
         raise ExperimentError('hit_assign_worker_id_not_set_in_exp')
     hit_id = request.args['hitId']
     assignment_id = request.args['assignmentId']
@@ -345,11 +347,7 @@ def start_exp():
         "a": assignment_id,
         "w": worker_id
     })
-    if hit_id[:5] == "debug":
-        debug_mode = True
-    else:
-        debug_mode = False
-
+    debug_mode = hit_id[:5] == "debug"
     # Check first to see if this hitId or assignmentId exists.  If so, check to
     # see if inExp is set
     matches = Participant.query.\
@@ -413,22 +411,18 @@ def start_exp():
                 raise ExperimentError(
                     'hit_assign_appears_in_database_more_than_once'
                 )
-            if other_assignment:
-                raise ExperimentError('already_did_exp_hit')
+            raise ExperimentError('already_did_exp_hit')
 
-    if mode == 'sandbox' or mode == 'live':
+    if mode in ['sandbox', 'live']:
         # If everything goes ok here relatively safe to assume we can lookup
         # the ad.
         ad_id = get_ad_via_hitid(hit_id)
-        if ad_id != "error":
-            if mode == "sandbox":
-                ad_server_location = 'https://sandbox.ad.psiturk.org/complete/'\
-                    + str(ad_id)
-            elif mode == "live":
-                ad_server_location = 'https://ad.psiturk.org/complete/' +\
-                str(ad_id)
-        else:
+        if ad_id == "error":
             raise ExperimentError('hit_not_registered_with_ad_server')
+        if mode == "live":
+            ad_server_location = f'https://ad.psiturk.org/complete/{str(ad_id)}'
+        elif mode == "sandbox":
+            ad_server_location = f'https://sandbox.ad.psiturk.org/complete/{str(ad_id)}'
     else:
         ad_server_location = '/complete'
 
@@ -450,7 +444,7 @@ def enterexp():
     referesh to start over).
     """
     app.logger.info("Accessing /inexp")
-    if not 'uniqueId' in request.form:
+    if 'uniqueId' not in request.form:
         raise ExperimentError('improper_inputs')
     unique_id = request.form['uniqueId']
 
@@ -476,7 +470,7 @@ def load(uid=None):
     Load experiment data, which should be a JSON object and will be stored
     after converting to string.
     """
-    app.logger.info("GET /sync route with id: %s" % uid)
+    app.logger.info(f"GET /sync route with id: {uid}")
 
     try:
         user = Participant.query.\
@@ -505,7 +499,7 @@ def update(uid=None):
     Save experiment data, which should be a JSON object and will be stored
     after converting to string.
     """
-    app.logger.info("PUT /sync route with id: %s" % uid)
+    app.logger.info(f"PUT /sync route with id: {uid}")
 
     try:
         user = Participant.query.\
@@ -537,18 +531,14 @@ def quitter():
     Mark quitter as such.
     """
     unique_id = request.form['uniqueId']
-    if unique_id[:5] == "debug":
-        debug_mode = True
-    else:
-        debug_mode = False
-
+    debug_mode = unique_id[:5] == "debug"
     if debug_mode:
         resp = {"status": "didn't mark as quitter since this is debugging"}
         return jsonify(**resp)
     else:
         try:
             unique_id = request.form['uniqueId']
-            app.logger.info("Marking quitter %s" % unique_id)
+            app.logger.info(f"Marking quitter {unique_id}")
             user = Participant.query.\
                 filter(Participant.uniqueid == unique_id).\
                 one()
@@ -566,31 +556,29 @@ def quitter():
 @nocache
 def debug_complete():
     ''' Debugging route for complete. '''
-    if not 'uniqueId' in request.args:
+    if 'uniqueId' not in request.args:
         raise ExperimentError('improper_inputs')
+    unique_id = request.args['uniqueId']
+    try:
+        user = Participant.query.\
+            filter(Participant.uniqueid == unique_id).one()
+        user.status = COMPLETED
+        user.endhit = datetime.datetime.now()
+        db_session.add(user)
+        db_session.commit()
+    except:
+        raise ExperimentError('error_setting_worker_complete')
     else:
-        unique_id = request.args['uniqueId']
-        try:
-            user = Participant.query.\
-                filter(Participant.uniqueid == unique_id).one()
-            user.status = COMPLETED
-            user.endhit = datetime.datetime.now()
-            db_session.add(user)
-            db_session.commit()
-        except:
-            raise ExperimentError('error_setting_worker_complete')
-        else:
-            return render_template('complete.html')
+        return render_template('complete.html')
 
 @app.route('/worker_complete', methods=['GET'])
 def worker_complete():
     ''' Complete worker. '''
-    if not 'uniqueId' in request.args:
+    if 'uniqueId' not in request.args:
         resp = {"status": "bad request"}
-        return jsonify(**resp)
     else:
         unique_id = request.args['uniqueId']
-        app.logger.info("Completed experiment %s" % unique_id)
+        app.logger.info(f"Completed experiment {unique_id}")
         try:
             user = Participant.query.\
                 filter(Participant.uniqueid == unique_id).one()
@@ -602,17 +590,17 @@ def worker_complete():
         except exc.SQLAlchemyError:
             status = "database error"
         resp = {"status" : status}
-        return jsonify(**resp)
+
+    return jsonify(**resp)
 
 @app.route('/worker_submitted', methods=['GET'])
 def worker_submitted():
     ''' Submit worker '''
-    if not 'uniqueId' in request.args:
+    if 'uniqueId' not in request.args:
         resp = {"status": "bad request"}
-        return jsonify(**resp)
     else:
         unique_id = request.args['uniqueId']
-        app.logger.info("Submitted experiment for %s" % unique_id)
+        app.logger.info(f"Submitted experiment for {unique_id}")
         try:
             user = Participant.query.\
                 filter(Participant.uniqueid == unique_id).one()
@@ -623,7 +611,8 @@ def worker_submitted():
         except exc.SQLAlchemyError:
             status = "database error"
         resp = {"status" : status}
-        return jsonify(**resp)
+
+    return jsonify(**resp)
 
 # Is this a security risk?
 @app.route("/ppid")
@@ -643,9 +632,7 @@ def insert_mode(page_html, mode):
     for match in matches:
         match_found = True
     if match_found:
-        new_html = page_html[:match.end()] + "&mode=" + mode +\
-            page_html[match.end():]
-        return new_html
+        return f"{page_html[:match.end()]}&mode={mode}{page_html[match.end():]}"
     else:
         raise ExperimentError("insert_mode_failed")
 
@@ -661,10 +648,10 @@ def regularpage(foldername=None, pagename=None):
     """
     if foldername is None and pagename is None:
         raise ExperimentError('page_not_found')
-    if foldername is None and pagename is not None:
+    if foldername is None:
         return render_template(pagename)
     else:
-        return render_template(foldername+"/"+pagename)
+        return render_template(f"{foldername}/{pagename}")
 
 def run_webserver():
     ''' Run web server '''

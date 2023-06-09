@@ -40,13 +40,11 @@ class PsiturkOrgServices(object):
 
     def check_credentials(self):
         ''' Check credentials '''
-        req = requests.get(self.api_server + '/api/ad',
-                           auth=(self.access_key, self.secret_key))
+        req = requests.get(
+            f'{self.api_server}/api/ad', auth=(self.access_key, self.secret_key)
+        )
         # Not sure 500 server error should be included here
-        if req.status_code in [401, 403, 500]:
-            return False
-        else:
-            return True
+        return req.status_code not in [401, 403, 500]
 
     def update_credentials(self, key, secret):
         ''' Update credentials '''
@@ -67,8 +65,9 @@ class PsiturkOrgServices(object):
             get_system_status:
         """
         try:
-            api_server_status_link = self.api_server + '/status_msg?version=' +\
-                version_number
+            api_server_status_link = (
+                f'{self.api_server}/status_msg?version={version_number}'
+            )
             response = urllib2.urlopen(api_server_status_link, timeout=1)
             status_msg = json.load(response)['status']
         except urllib2.HTTPError:
@@ -84,42 +83,40 @@ class PsiturkOrgServices(object):
             running from behind a NAT/wifi router).  Of course, incoming port
             to the router must be forwarded correctly.
         """
-        if 'OPENSHIFT_SECRET_TOKEN' in os.environ:
-            my_ip = os.environ['OPENSHIFT_APP_DNS']
-        else:
-            my_ip = json.load(urllib2.urlopen(
-                'http://httpbin.org/ip'
-            ))['origin']
-        return my_ip
+        return (
+            os.environ['OPENSHIFT_APP_DNS']
+            if 'OPENSHIFT_SECRET_TOKEN' in os.environ
+            else json.load(urllib2.urlopen('http://httpbin.org/ip'))['origin']
+        )
 
     def create_record(self, name, content, username, password):
         ''' Create record '''
-        #headers = {'key': username, 'secret': password}
-        req = requests.post(self.api_server + '/api/' + name,
-                            data=json.dumps(content), auth=(username, password))
-        return req
+        return requests.post(
+            f'{self.api_server}/api/{name}',
+            data=json.dumps(content),
+            auth=(username, password),
+        )
 
     def update_record(self, name, recordid, content, username, password):
         ''' Update record '''
-        # headers = {'key': username, 'secret': password}
-        req = requests.put(self.api_server + '/api/' + name + '/' +
-                           str(recordid), data=json.dumps(content),
-                           auth=(username, password))
-        return req
+        return requests.put(
+            f'{self.api_server}/api/{name}/{str(recordid)}',
+            data=json.dumps(content),
+            auth=(username, password),
+        )
 
     def delete_record(self, name, recordid, username, password):
         ''' Delete record '''
-        #headers = {'key': username, 'secret': password}
-        req = requests.delete(self.api_server + '/api/' + name + '/' +
-                              str(recordid), auth=(username, password))
-        return req
+        return requests.delete(
+            f'{self.api_server}/api/{name}/{str(recordid)}',
+            auth=(username, password),
+        )
 
     def query_records(self, name, username, password, query=''):
         ''' Query records '''
-        #headers = {'key': username, 'secret': password}
-        req = requests.get(self.api_server + '/api/' + name + "/" + query,
-                           auth=(username, password))
-        return req
+        return requests.get(
+            f'{self.api_server}/api/{name}/{query}', auth=(username, password)
+        )
 
     def get_ad_url(self, ad_id, sandbox):
         """
@@ -127,9 +124,9 @@ class PsiturkOrgServices(object):
             gets ad server thing
         """
         if sandbox:
-            return self.sandbox_ad_server + '/view/' + str(ad_id)
+            return f'{self.sandbox_ad_server}/view/{str(ad_id)}'
         else:
-            return self.ad_server + '/view/' + str(ad_id)
+            return f'{self.ad_server}/view/{str(ad_id)}'
 
     def set_ad_hitid(self, ad_id, hit_id, sandbox):
         """
@@ -142,30 +139,24 @@ class PsiturkOrgServices(object):
         else:
             req = self.update_record('ad', ad_id, {'amt_hit_id':hit_id},
                                      self.access_key, self.secret_key)
-        if req.status_code == 201:
-            return True
-        else:
-            return False
+        return req.status_code == 201
 
     def create_ad(self, ad_content):
         """
             create_ad:
         """
-        if not 'is_sandbox' in ad_content:
+        if 'is_sandbox' not in ad_content:
             return False
-        else:
-            if ad_content['is_sandbox']:
-                req = self.create_record(
-                    'sandboxad', ad_content, self.access_key, self.secret_key
-                )
-            else:
-                req = self.create_record(
-                    'ad', ad_content, self.access_key, self.secret_key
-                )
-            if req.status_code == 201:
-                return req.json()['ad_id']
-            else:
-                return False
+        req = (
+            self.create_record(
+                'sandboxad', ad_content, self.access_key, self.secret_key
+            )
+            if ad_content['is_sandbox']
+            else self.create_record(
+                'ad', ad_content, self.access_key, self.secret_key
+            )
+        )
+        return req.json()['ad_id'] if req.status_code == 201 else False
 
     def download_experiment(self, experiment_id):
         """
@@ -191,9 +182,7 @@ class ExperimentExchangeServices(object):
 
     def query_records_no_auth(self, name, query=''):
         ''' Query records without authorization '''
-        #headers = {'key': username, 'secret': password}
-        req = requests.get(self.api_server + '/api/' + name + "/" + query)
-        return req
+        return requests.get(f'{self.api_server}/api/{name}/{query}')
 
     def download_experiment(self, experiment_id):
         """
@@ -260,23 +249,21 @@ class TunnelServices(object):
     @classmethod
     def is_compatible(cls):
         ''' Check OS '''
-        is_64bit = struct.calcsize('P')*8 == 64
+        is_64bit = struct.calcsize('P') == 8
         if (_platform == "darwin" and is_64bit):
             return True
-        else:
-            print("Linux tunnels are currenlty unsupported.  Please notify "\
+        print("Linux tunnels are currenlty unsupported.  Please notify "\
                   "authors@psiturk.org\nif you'd like to see this feature.")
-            return False
+        return False
 
     def get_tunnel_ad_url(self):
         ''' Get tunnel hostname from psiturk.org  '''
         req = requests.get('https://api.psiturk.org/api/tunnel',
                            auth=(self.access_key, self.secret_key))
-        if req.status_code in [401, 403, 500]:
-            print(req.content)
-            return False
-        else:
+        if req.status_code not in {401, 403, 500}:
             return req.json()['tunnel_hostname']
+        print(req.content)
+        return False
 
     def change_tunnel_ad_url(self):
         ''' Change tunnel ad url. '''
@@ -286,7 +273,7 @@ class TunnelServices(object):
                               auth=(self.access_key, self.secret_key))
         # the request content here actually will include the tunnel_hostname
         # if needed or wanted.
-        if req.status_code in [401, 403, 500]:
+        if req.status_code in {401, 403, 500}:
             print(req.content)
             return False
 
