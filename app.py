@@ -145,10 +145,7 @@ def get_people(people):
                       'workerid', 'cond', 'counterbalance',
                       'beginhit','beginexp', 'endhit', 'status', 'datastring']:
             if field=='datastring':
-                if record[field] == None:
-                    person[field] = "Nothing yet"
-                else:
-                    person[field] = record[field][:10]
+                person[field] = "Nothing yet" if record[field] is None else record[field][:10]
             else:
                 person[field] = record[field]
         people.append( person )
@@ -515,7 +512,7 @@ def regularpage(pagename=None):
     """
     Route not found by the other routes above. May point to a static template.
     """
-    if pagename==None:
+    if pagename is None:
         raise ExperimentError('page_not_found')
     return render_template(pagename)
 
